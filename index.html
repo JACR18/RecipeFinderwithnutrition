@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Food — Recipe Finder</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #F5F0E8;
+    --dark: #1C1510;
+    --terra: #C8502A;
+    --terra-light: #E8724A;
+    --brown: #6B3F2A;
+    --gold: #D4A853;
+    --muted: #8A7968;
+    --card-bg: #FDFAF4;
+    --border: #E2D9C8;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--dark);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(245,240,232,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 clamp(1rem,4vw,3rem);
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+  }
+  .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--dark);
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .logo span { color: var(--terra); }
+  nav { display: flex; gap: 1.5rem; align-items: center; }
+  nav a {
+    font-size: 0.85rem; font-weight: 500; color: var(--muted);
+    text-decoration: none; letter-spacing: 0.04em; text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  nav a:hover { color: var(--terra); }
+
+  /* ── HERO ── */
+  .hero {
+    padding: clamp(3rem,8vw,6rem) clamp(1rem,4vw,3rem) clamp(2rem,5vw,4rem);
+    max-width: 900px; margin: 0 auto; text-align: center;
+  }
+  .hero-tag {
+    display: inline-block;
+    font-size: 0.72rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--terra); border: 1px solid var(--terra);
+    padding: 0.3rem 0.9rem; border-radius: 2rem; margin-bottom: 1.5rem;
+  }
+  .hero h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.8rem, 6vw, 5rem);
+    font-weight: 300; line-height: 1.1; letter-spacing: -0.02em;
+    color: var(--dark); margin-bottom: 1.2rem;
+  }
+  .hero h1 em { font-style: italic; color: var(--terra); }
+  .hero p {
+    font-size: 1rem; color: var(--muted); max-width: 480px;
+    margin: 0 auto 2.5rem; line-height: 1.7;
+  }
+
+  /* ── SEARCH ── */
+  .search-wrap {
+    display: flex; align-items: center; gap: 0;
+    background: #fff; border: 1.5px solid var(--border);
+    border-radius: 0.6rem; overflow: hidden;
+    max-width: 560px; margin: 0 auto;
+    box-shadow: 0 8px 32px rgba(28,21,16,0.08);
+    transition: box-shadow 0.3s, border-color 0.3s;
+  }
+  .search-wrap:focus-within {
+    border-color: var(--terra);
+    box-shadow: 0 8px 32px rgba(200,80,42,0.15);
+  }
+  .search-wrap input {
+    flex: 1; padding: 0.9rem 1.2rem;
+    border: none; outline: none; background: transparent;
+    font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--dark);
+  }
+  .search-wrap input::placeholder { color: #B0A898; }
+  .search-btn {
+    padding: 0.9rem 1.4rem; background: var(--terra); border: none;
+    color: #fff; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem; font-weight: 500; letter-spacing: 0.05em;
+    text-transform: uppercase; transition: background 0.2s;
+  }
+  .search-btn:hover { background: var(--brown); }
+
+  /* ── CATEGORIES ── */
+  .section { max-width: 1200px; margin: 0 auto; padding: 0 clamp(1rem,4vw,2.5rem); }
+  .section-header {
+    display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;
+  }
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem; font-weight: 600; color: var(--dark);
+  }
+  .section-sub { font-size: 0.82rem; color: var(--muted); letter-spacing: 0.04em; }
+
+  .cats-strip {
+    display: flex; gap: 0.6rem; overflow-x: auto; padding-bottom: 0.5rem;
+    margin-bottom: 3rem; scrollbar-width: none;
+  }
+  .cats-strip::-webkit-scrollbar { display: none; }
+  .cat-chip {
+    flex-shrink: 0; padding: 0.45rem 1rem;
+    border: 1px solid var(--border); border-radius: 2rem;
+    background: var(--card-bg); cursor: pointer;
+    font-size: 0.82rem; font-weight: 500; color: var(--muted);
+    transition: all 0.2s; white-space: nowrap;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .cat-chip img { width: 20px; height: 20px; object-fit: contain; border-radius: 50%; }
+  .cat-chip:hover, .cat-chip.active {
+    background: var(--terra); border-color: var(--terra); color: #fff;
+  }
+
+  /* ── MEAL GRID ── */
+  .meal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.5rem; margin-bottom: 4rem;
+  }
+  .meal-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 0.8rem; overflow: hidden; cursor: pointer;
+    transition: transform 0.25s, box-shadow 0.25s;
+    animation: fadeUp 0.4s ease both;
+  }
+  .meal-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(28,21,16,0.12);
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .meal-card img {
+    width: 100%; aspect-ratio: 4/3; object-fit: cover;
+    display: block; transition: transform 0.4s;
+  }
+  .meal-card:hover img { transform: scale(1.04); }
+  .meal-card-img-wrap { overflow: hidden; position: relative; }
+  .meal-card-badge {
+    position: absolute; top: 0.7rem; right: 0.7rem;
+    background: rgba(245,240,232,0.9); backdrop-filter: blur(4px);
+    font-size: 0.7rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--terra); padding: 0.25rem 0.6rem; border-radius: 2rem;
+  }
+  .meal-card-body { padding: 1rem 1.1rem 1.2rem; }
+  .meal-card-area { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.3rem; }
+  .meal-card-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem; font-weight: 600; color: var(--dark); line-height: 1.25;
+    margin-bottom: 0.6rem;
+  }
+  .meal-card-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .tag {
+    font-size: 0.68rem; letter-spacing: 0.04em; padding: 0.2rem 0.55rem;
+    border-radius: 2rem; background: #EEE8DC; color: var(--muted);
+  }
+
+  /* ── LOADER ── */
+  .loader-wrap { display: flex; justify-content: center; padding: 3rem; }
+  .loader {
+    width: 36px; height: 36px; border: 3px solid var(--border);
+    border-top-color: var(--terra); border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    text-align: center; padding: 4rem 2rem; color: var(--muted);
+  }
+  .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+  .empty h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem; color: var(--dark); margin-bottom: 0.5rem;
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(28,21,16,0.6); backdrop-filter: blur(4px);
+    display: flex; align-items: flex-start; justify-content: center;
+    overflow-y: auto; padding: 2rem 1rem;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--card-bg); border-radius: 1rem; overflow: hidden;
+    max-width: 900px; width: 100%;
+    transform: translateY(30px); transition: transform 0.35s;
+    box-shadow: 0 32px 80px rgba(28,21,16,0.25);
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-hero { position: relative; }
+  .modal-hero img { width: 100%; max-height: 340px; object-fit: cover; display: block; }
+  .modal-hero-gradient {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 60%;
+    background: linear-gradient(transparent, rgba(28,21,16,0.75));
+  }
+  .modal-hero-text {
+    position: absolute; bottom: 1.5rem; left: 1.8rem; right: 4rem; color: #fff;
+  }
+  .modal-hero-text .area { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8; margin-bottom: 0.4rem; }
+  .modal-hero-text h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 600; line-height: 1.1;
+  }
+  .modal-close {
+    position: absolute; top: 1rem; right: 1rem;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(245,240,232,0.9); border: none; cursor: pointer;
+    font-size: 1.1rem; color: var(--dark); display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .modal-close:hover { background: #fff; }
+
+  .modal-body { display: grid; grid-template-columns: 1fr 280px; gap: 0; }
+  @media(max-width: 640px) { .modal-body { grid-template-columns: 1fr; } }
+
+  .modal-main { padding: 1.8rem; border-right: 1px solid var(--border); }
+  .modal-sidebar { padding: 1.8rem; }
+
+  .modal-section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem; font-weight: 600; color: var(--dark);
+    margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .modal-section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* Ingredients */
+  .ingredients-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0.5rem; margin-bottom: 2rem;
+  }
+  .ingredient-row {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.45rem 0; border-bottom: 1px dashed var(--border);
+  }
+  .ingredient-row .measure {
+    font-size: 0.78rem; font-weight: 500; color: var(--terra);
+    min-width: 55px; text-align: right; flex-shrink: 0;
+  }
+  .ingredient-row .name { font-size: 0.85rem; color: var(--dark); }
+
+  /* Instructions */
+  .instructions { line-height: 1.8; font-size: 0.9rem; color: #4A3D32; }
+  .instruction-step {
+    display: flex; gap: 0.8rem; margin-bottom: 1rem; align-items: flex-start;
+  }
+  .step-num {
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--terra); color: #fff; font-size: 0.7rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; margin-top: 0.15rem;
+  }
+
+  /* ── NUTRITION LABEL ── */
+  .nutrition-label {
+    border: 2px solid var(--dark); padding: 0.6rem 0.8rem;
+    font-family: 'DM Sans', sans-serif;
+    background: #fff;
+  }
+  .nutrition-title {
+    font-size: 1.6rem; font-weight: 700; line-height: 1; margin-bottom: 0.1rem;
+    letter-spacing: -0.02em;
+  }
+  .nutrition-servings { font-size: 0.72rem; margin-bottom: 0.3rem; color: #333; }
+  .nutrition-divider { border: none; border-top: 8px solid var(--dark); margin: 0.3rem 0; }
+  .nutrition-divider.thin { border-top-width: 3px; }
+  .nutrition-divider.micro { border-top-width: 1px; }
+  .nutrition-cal-row {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: 0.2rem;
+  }
+  .nutrition-cal-label { font-size: 0.75rem; font-weight: 700; }
+  .nutrition-cal-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+  .nutrition-dv { font-size: 0.65rem; text-align: right; margin-bottom: 0.3rem; color: #333; }
+  .nutrition-row {
+    display: flex; justify-content: space-between;
+    font-size: 0.72rem; padding: 0.18rem 0;
+    border-bottom: 1px solid #ccc;
+  }
+  .nutrition-row .label { color: #111; }
+  .nutrition-row .value { font-weight: 500; color: #111; }
+  .nutrition-row.indented .label { padding-left: 1rem; font-weight: 400; }
+  .nutrition-row.bold .label { font-weight: 700; }
+  .nutrition-note {
+    font-size: 0.62rem; color: #555; margin-top: 0.5rem; line-height: 1.4;
+    font-style: italic;
+  }
+
+  .video-link {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--terra); color: #fff; padding: 0.6rem 1.2rem;
+    border-radius: 0.4rem; text-decoration: none; font-size: 0.82rem;
+    font-weight: 500; margin-top: 1.2rem; transition: background 0.2s;
+  }
+  .video-link:hover { background: var(--brown); }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem clamp(1rem,4vw,3rem);
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 1rem;
+  }
+  footer .footer-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem; font-weight: 600; color: var(--muted);
+  }
+  footer p { font-size: 0.78rem; color: var(--muted); }
+
+  .random-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    border: 1.5px solid var(--terra); color: var(--terra);
+    background: transparent; padding: 0.6rem 1.2rem; border-radius: 0.4rem;
+    font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; letter-spacing: 0.04em;
+  }
+  .random-btn:hover { background: var(--terra); color: #fff; }
+
+  .hero-btns { display: flex; gap: 0.8rem; justify-content: center; margin-top: 1.2rem; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Recipe Finder<span>.</span></div>
+  <nav>
+    <a href="#discover">Discover</a>
+    <a href="#" onclick="loadRandom()">Inspire Me</a>
+  </nav>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-tag">🍽️ Powered by global recipes</div>
+  <h1>Find your next<br><em>favourite dish</em></h1>
+  <p>Search thousands of world recipes. Explore ingredients, step-by-step instructions, and detailed nutrition insights.</p>
+
+  <div class="search-wrap">
+    <input type="text" id="searchInput" placeholder="Try 'chicken', 'pasta', 'sushi'…" onkeydown="if(event.key==='Enter')searchMeals()">
+    <button class="search-btn" onclick="searchMeals()">Search</button>
+  </div>
+  <div class="hero-btns">
+    <button class="random-btn" onclick="loadRandom()">✦ Surprise Me</button>
+  </div>
+</section>
+
+<!-- CATEGORIES -->
+<section class="section" id="discover">
+  <div class="section-header">
+    <h2 class="section-title">Browse by Category</h2>
+    <span class="section-sub">Select any cuisine</span>
+  </div>
+  <div class="cats-strip" id="catsStrip">
+    <div class="loader-wrap"><div class="loader"></div></div>
+  </div>
+
+  <!-- MEAL GRID -->
+  <div class="section-header">
+    <h2 class="section-title" id="gridTitle">Trending Today</h2>
+  </div>
+  <div id="mealGrid" class="meal-grid">
+    <div class="loader-wrap" style="grid-column:1/-1"><div class="loader"></div></div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Group RANIDO</div>
+  <p>Recipe data courtesy of TheMealDB community database.</p>
+</footer>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-hero">
+      <img id="modalImg" src="" alt="">
+      <div class="modal-hero-gradient"></div>
+      <div class="modal-hero-text">
+        <div class="area" id="modalArea"></div>
+        <h2 id="modalName"></h2>
+      </div>
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-main">
+        <div class="modal-section-title">Ingredients</div>
+        <div class="ingredients-grid" id="modalIngredients"></div>
+        <div class="modal-section-title">Instructions</div>
+        <div id="modalInstructions" class="instructions"></div>
+        <div id="modalVideo"></div>
+      </div>
+      <div class="modal-sidebar">
+        <div class="modal-section-title">Nutrition Facts</div>
+        <div class="nutrition-label" id="nutritionLabel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://www.themealdb.com/api/json/v1/1/';
+let currentCategory = null;
+
+// ── Estimated nutrition per meal category (approximate values for a typical serving)
+const nutritionDB = {
+  Beef:       { cal:520, fat:28, sat:11, chol:95, sod:680, carb:22, fiber:2, sugar:4, prot:45 },
+  Chicken:    { cal:380, fat:14, sat:4,  chol:120,sod:590, carb:18, fiber:2, sugar:3, prot:42 },
+  Seafood:    { cal:290, fat:10, sat:2,  chol:85, sod:510, carb:14, fiber:1, sugar:2, prot:36 },
+  Lamb:       { cal:460, fat:25, sat:10, chol:100,sod:610, carb:16, fiber:2, sugar:3, prot:40 },
+  Pasta:      { cal:430, fat:12, sat:4,  chol:30, sod:480, carb:62, fiber:4, sugar:5, prot:16 },
+  Dessert:    { cal:510, fat:22, sat:13, chol:85, sod:240, carb:72, fiber:2, sugar:54,prot:7  },
+  Vegetarian: { cal:310, fat:9,  sat:2,  chol:0,  sod:390, carb:48, fiber:9, sugar:12,prot:14 },
+  Vegan:      { cal:280, fat:7,  sat:1,  chol:0,  sod:340, carb:50, fiber:10,sugar:10,prot:11 },
+  Pork:       { cal:490, fat:26, sat:9,  chol:90, sod:720, carb:20, fiber:2, sugar:5, prot:40 },
+  Side:       { cal:230, fat:8,  sat:2,  chol:10, sod:320, carb:34, fiber:4, sugar:4, prot:6  },
+  Starter:    { cal:180, fat:7,  sat:2,  chol:25, sod:410, carb:22, fiber:2, sugar:3, prot:9  },
+  Breakfast:  { cal:350, fat:15, sat:5,  chol:220,sod:550, carb:38, fiber:3, sugar:10,prot:18 },
+  Goat:       { cal:420, fat:18, sat:7,  chol:85, sod:580, carb:15, fiber:2, sugar:3, prot:38 },
+  Miscellaneous:{ cal:370, fat:16, sat:5, chol:55, sod:500, carb:40, fiber:3, sugar:6, prot:18 },
+};
+
+function getNutrition(category) {
+  return nutritionDB[category] || nutritionDB['Miscellaneous'];
+}
+
+// ── Load categories
+async function loadCategories() {
+  const res = await fetch(API + 'categories.php');
+  const data = await res.json();
+  const strip = document.getElementById('catsStrip');
+  strip.innerHTML = '';
+  data.categories.forEach((cat, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'cat-chip';
+    chip.style.animationDelay = `${i * 0.03}s`;
+    chip.innerHTML = `<img src="${cat.strCategoryThumb}" alt="">${cat.strCategory}`;
+    chip.onclick = () => {
+      document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      loadByCategory(cat.strCategory);
+    };
+    strip.appendChild(chip);
+  });
+  // Load default
+  loadByCategory('Chicken');
+  document.querySelector('.cat-chip:nth-child(2)').classList.add('active');
+}
+
+// ── Load meals by category
+async function loadByCategory(cat) {
+  currentCategory = cat;
+  document.getElementById('gridTitle').textContent = cat + ' Dishes';
+  showGridLoader();
+  const res = await fetch(API + `filter.php?c=${cat}`);
+  const data = await res.json();
+  const meals = data.meals ? data.meals.slice(0,12) : [];
+  renderGrid(meals, cat);
+}
+
+// ── Search
+async function searchMeals() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  showGridLoader();
+  document.getElementById('gridTitle').textContent = `Results for "${q}"`;
+  const res = await fetch(API + `search.php?s=${encodeURIComponent(q)}`);
+  const data = await res.json();
+  const meals = data.meals || [];
+  renderGrid(meals, '');
+}
+
+// ── Random
+async function loadRandom() {
+  const res = await fetch(API + 'random.php');
+  const data = await res.json();
+  if (data.meals) openModal(data.meals[0]);
+}
+
+function showGridLoader() {
+  document.getElementById('mealGrid').innerHTML =
+    '<div class="loader-wrap" style="grid-column:1/-1"><div class="loader"></div></div>';
+}
+
+function renderGrid(meals, category) {
+  const grid = document.getElementById('mealGrid');
+  if (!meals.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div class="empty-icon">🍽️</div>
+      <h3>No recipes found</h3>
+      <p>Try a different search term or browse by category above.</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = '';
+  meals.forEach((meal, i) => {
+    const card = document.createElement('div');
+    card.className = 'meal-card';
+    card.style.animationDelay = `${i * 0.06}s`;
+    card.innerHTML = `
+      <div class="meal-card-img-wrap">
+        <img src="${meal.strMealThumb || ''}/preview" alt="${meal.strMeal}" loading="lazy" onerror="this.src='${meal.strMealThumb}'">
+        ${category ? `<div class="meal-card-badge">${category}</div>` : ''}
+      </div>
+      <div class="meal-card-body">
+        <div class="meal-card-area">${meal.strArea || category || 'Global'}</div>
+        <div class="meal-card-name">${meal.strMeal}</div>
+        <div class="meal-card-tags">
+          ${meal.strTags ? meal.strTags.split(',').slice(0,3).map(t=>`<span class="tag">${t.trim()}</span>`).join('') : ''}
+        </div>
+      </div>`;
+    card.onclick = () => fetchAndOpenMeal(meal.idMeal, category);
+    grid.appendChild(card);
+  });
+}
+
+// ── Fetch full meal + open modal
+async function fetchAndOpenMeal(id, category) {
+  const res = await fetch(API + `lookup.php?i=${id}`);
+  const data = await res.json();
+  if (data.meals) {
+    const meal = data.meals[0];
+    if (!meal.strCategory && category) meal._inferredCategory = category;
+    openModal(meal);
+  }
+}
+
+function openModal(meal) {
+  // Fill hero
+  document.getElementById('modalImg').src = meal.strMealThumb;
+  document.getElementById('modalName').textContent = meal.strMeal;
+  document.getElementById('modalArea').textContent =
+    [meal.strArea, meal.strCategory].filter(Boolean).join(' · ');
+
+  // Ingredients
+  const ingWrap = document.getElementById('modalIngredients');
+  ingWrap.innerHTML = '';
+  for (let i = 1; i <= 20; i++) {
+    const name = meal[`strIngredient${i}`];
+    const measure = meal[`strMeasure${i}`];
+    if (!name || !name.trim()) break;
+    const row = document.createElement('div');
+    row.className = 'ingredient-row';
+    row.innerHTML = `<span class="measure">${measure ? measure.trim() : ''}</span><span class="name">${name.trim()}</span>`;
+    ingWrap.appendChild(row);
+  }
+
+  // Instructions
+  const instr = document.getElementById('modalInstructions');
+  const steps = (meal.strInstructions || '').split(/\r?\n/).filter(s => s.trim().length > 10);
+  instr.innerHTML = steps.length
+    ? steps.map((s,i) => `<div class="instruction-step"><div class="step-num">${i+1}</div><div>${s.trim()}</div></div>`).join('')
+    : `<p>${meal.strInstructions}</p>`;
+
+  // Video
+  const vid = document.getElementById('modalVideo');
+  vid.innerHTML = meal.strYoutube
+    ? `<a class="video-link" href="${meal.strYoutube}" target="_blank">▶ Watch on YouTube</a>` : '';
+
+  // Nutrition
+  const cat = meal.strCategory || meal._inferredCategory || 'Miscellaneous';
+  const n = getNutrition(cat);
+  document.getElementById('nutritionLabel').innerHTML = buildNutritionLabel(n, cat);
+
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function buildNutritionLabel(n, cat) {
+  const dv = (val, ref) => Math.round((val / ref) * 100);
+  return `
+    <div class="nutrition-title">Nutrition Facts</div>
+    <div class="nutrition-servings">1 serving (avg. ${cat} dish)</div>
+    <hr class="nutrition-divider">
+    <div class="nutrition-cal-row">
+      <div class="nutrition-cal-label">Calories</div>
+      <div class="nutrition-cal-value">${n.cal}</div>
+    </div>
+    <hr class="nutrition-divider thin">
+    <div class="nutrition-dv">% Daily Value*</div>
+    <div class="nutrition-row bold"><span class="label">Total Fat ${n.fat}g</span><span class="value">${dv(n.fat,78)}%</span></div>
+    <div class="nutrition-row indented"><span class="label">Saturated Fat ${n.sat}g</span><span class="value">${dv(n.sat,20)}%</span></div>
+    <div class="nutrition-row indented"><span class="label"><em>Trans</em> Fat 0g</span><span class="value"></span></div>
+    <div class="nutrition-row bold"><span class="label">Cholesterol ${n.chol}mg</span><span class="value">${dv(n.chol,300)}%</span></div>
+    <div class="nutrition-row bold"><span class="label">Sodium ${n.sod}mg</span><span class="value">${dv(n.sod,2300)}%</span></div>
+    <div class="nutrition-row bold"><span class="label">Total Carb. ${n.carb}g</span><span class="value">${dv(n.carb,275)}%</span></div>
+    <div class="nutrition-row indented"><span class="label">Dietary Fiber ${n.fiber}g</span><span class="value">${dv(n.fiber,28)}%</span></div>
+    <div class="nutrition-row indented"><span class="label">Total Sugars ${n.sugar}g</span><span class="value"></span></div>
+    <div class="nutrition-row bold"><span class="label">Protein ${n.prot}g</span><span class="value">${dv(n.prot,50)}%</span></div>
+    <hr class="nutrition-divider thin">
+    <div class="nutrition-row"><span class="label">Vitamin D</span><span class="value">2mcg · 10%</span></div>
+    <div class="nutrition-row"><span class="label">Calcium</span><span class="value">260mg · 20%</span></div>
+    <div class="nutrition-row"><span class="label">Iron</span><span class="value">8mg · 45%</span></div>
+    <div class="nutrition-row"><span class="label">Potassium</span><span class="value">680mg · 15%</span></div>
+    <p class="nutrition-note">*Values are estimates based on typical ${cat.toLowerCase()} dishes and a 2,000 calorie diet. Actual values may vary by recipe.</p>
+  `;
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
+
+// ── Init
+loadCategories();
+</script>
+</body>
+</html>
