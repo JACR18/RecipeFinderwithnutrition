@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Food — Recipe Finder</title>
+<title>Recipe Finder — Discover World Cuisine</title>
+<!-- FIX: Added Content-Security-Policy meta tag to explicitly allow only safe sources -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://www.themealdb.com data:; connect-src https://www.themealdb.com;">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,7 +53,7 @@
   nav a {
     font-size: 0.85rem; font-weight: 500; color: var(--muted);
     text-decoration: none; letter-spacing: 0.04em; text-transform: uppercase;
-    transition: color 0.2s;
+    transition: color 0.2s; cursor: pointer;
   }
   nav a:hover { color: var(--terra); }
 
@@ -158,6 +160,7 @@
   .meal-card img {
     width: 100%; aspect-ratio: 4/3; object-fit: cover;
     display: block; transition: transform 0.4s;
+    background: var(--border);
   }
   .meal-card:hover img { transform: scale(1.04); }
   .meal-card-img-wrap { overflow: hidden; position: relative; }
@@ -348,18 +351,14 @@
 </style>
 </head>
 <body>
-<div style="background:#1a0f00;border-bottom:1px solid rgba(200,80,42,0.3);padding:0.5rem 1.5rem;display:flex;align-items:center;justify-content:center;gap:0.8rem;font-family:'DM Sans',sans-serif;font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:rgba(200,80,42,0.85);text-align:center;flex-wrap:wrap">
-  <span style="font-size:0.9rem">⚠</span>
-  <span>This is a <strong style="color:#C8502A">demo project</strong> — no real data is collected, stored, or transmitted.</span>
-  <span style="color:rgba(200,80,42,0.3)">|</span>
-  <span style="color:#8A7968">Recipe data via TheMealDB free API</span>
-</div>
+
 <!-- HEADER -->
 <header>
   <div class="logo">Recipe Finder<span>.</span></div>
   <nav>
-    <a href="#discover">Discover</a>
-    <a href="#" onclick="loadRandom()">Inspire Me</a>
+    <a id="navDiscover" href="#discover">Discover</a>
+    <!-- FIX: Removed inline onclick; using id + addEventListener in JS -->
+    <a id="navInspire" href="#" aria-label="Get a random recipe suggestion">Inspire Me</a>
   </nav>
 </header>
 
@@ -370,11 +369,13 @@
   <p>Search thousands of world recipes. Explore ingredients, step-by-step instructions, and detailed nutrition insights.</p>
 
   <div class="search-wrap">
-    <input type="text" id="searchInput" placeholder="Try 'chicken', 'pasta', 'sushi'…" onkeydown="if(event.key==='Enter')searchMeals()">
-    <button class="search-btn" onclick="searchMeals()">Search</button>
+    <!-- FIX: Removed inline onkeydown; handled via addEventListener in JS -->
+    <input type="text" id="searchInput" placeholder="Try 'chicken', 'pasta', 'sushi'…" aria-label="Search recipes">
+    <button class="search-btn" id="searchBtn">Search</button>
   </div>
   <div class="hero-btns">
-    <button class="random-btn" onclick="loadRandom()">✦ Surprise Me</button>
+    <!-- FIX: Removed inline onclick -->
+    <button class="random-btn" id="randomBtn">✦ Surprise Me</button>
   </div>
 </section>
 
@@ -400,11 +401,11 @@
 <!-- FOOTER -->
 <footer>
   <div class="footer-logo">Group RANIDO</div>
-  <p>Recipe data courtesy of TheMealDB community database.</p>
+  <p>Recipe data courtesy of <a href="https://www.themealdb.com" target="_blank" rel="noopener noreferrer" style="color:var(--muted)">TheMealDB</a> community database.</p>
 </footer>
 
 <!-- MODAL -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalName">
   <div class="modal" id="modal">
     <div class="modal-hero">
       <img id="modalImg" src="" alt="">
@@ -413,7 +414,8 @@
         <div class="area" id="modalArea"></div>
         <h2 id="modalName"></h2>
       </div>
-      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+      <!-- FIX: Removed inline onclick -->
+      <button class="modal-close" id="modalCloseBtn" aria-label="Close recipe">✕</button>
     </div>
     <div class="modal-body">
       <div class="modal-main">
@@ -432,221 +434,399 @@
 </div>
 
 <script>
-const API = 'https://www.themealdb.com/api/json/v1/1/';
-let currentCategory = null;
+  // FIX: All code in one DOMContentLoaded block — no inline event handlers anywhere
 
-// ── Estimated nutrition per meal category (approximate values for a typical serving)
-const nutritionDB = {
-  Beef:       { cal:520, fat:28, sat:11, chol:95, sod:680, carb:22, fiber:2, sugar:4, prot:45 },
-  Chicken:    { cal:380, fat:14, sat:4,  chol:120,sod:590, carb:18, fiber:2, sugar:3, prot:42 },
-  Seafood:    { cal:290, fat:10, sat:2,  chol:85, sod:510, carb:14, fiber:1, sugar:2, prot:36 },
-  Lamb:       { cal:460, fat:25, sat:10, chol:100,sod:610, carb:16, fiber:2, sugar:3, prot:40 },
-  Pasta:      { cal:430, fat:12, sat:4,  chol:30, sod:480, carb:62, fiber:4, sugar:5, prot:16 },
-  Dessert:    { cal:510, fat:22, sat:13, chol:85, sod:240, carb:72, fiber:2, sugar:54,prot:7  },
-  Vegetarian: { cal:310, fat:9,  sat:2,  chol:0,  sod:390, carb:48, fiber:9, sugar:12,prot:14 },
-  Vegan:      { cal:280, fat:7,  sat:1,  chol:0,  sod:340, carb:50, fiber:10,sugar:10,prot:11 },
-  Pork:       { cal:490, fat:26, sat:9,  chol:90, sod:720, carb:20, fiber:2, sugar:5, prot:40 },
-  Side:       { cal:230, fat:8,  sat:2,  chol:10, sod:320, carb:34, fiber:4, sugar:4, prot:6  },
-  Starter:    { cal:180, fat:7,  sat:2,  chol:25, sod:410, carb:22, fiber:2, sugar:3, prot:9  },
-  Breakfast:  { cal:350, fat:15, sat:5,  chol:220,sod:550, carb:38, fiber:3, sugar:10,prot:18 },
-  Goat:       { cal:420, fat:18, sat:7,  chol:85, sod:580, carb:15, fiber:2, sugar:3, prot:38 },
-  Miscellaneous:{ cal:370, fat:16, sat:5, chol:55, sod:500, carb:40, fiber:3, sugar:6, prot:18 },
-};
+  const API = 'https://www.themealdb.com/api/json/v1/1/';
 
-function getNutrition(category) {
-  return nutritionDB[category] || nutritionDB['Miscellaneous'];
-}
-
-// ── Load categories
-async function loadCategories() {
-  const res = await fetch(API + 'categories.php');
-  const data = await res.json();
-  const strip = document.getElementById('catsStrip');
-  strip.innerHTML = '';
-  data.categories.forEach((cat, i) => {
-    const chip = document.createElement('div');
-    chip.className = 'cat-chip';
-    chip.style.animationDelay = `${i * 0.03}s`;
-    chip.innerHTML = `<img src="${cat.strCategoryThumb}" alt="">${cat.strCategory}`;
-    chip.onclick = () => {
-      document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-      loadByCategory(cat.strCategory);
-    };
-    strip.appendChild(chip);
-  });
-  // Load default
-  loadByCategory('Chicken');
-  document.querySelector('.cat-chip:nth-child(2)').classList.add('active');
-}
-
-// ── Load meals by category
-async function loadByCategory(cat) {
-  currentCategory = cat;
-  document.getElementById('gridTitle').textContent = cat + ' Dishes';
-  showGridLoader();
-  const res = await fetch(API + `filter.php?c=${cat}`);
-  const data = await res.json();
-  const meals = data.meals ? data.meals.slice(0,12) : [];
-  renderGrid(meals, cat);
-}
-
-// ── Search
-async function searchMeals() {
-  const q = document.getElementById('searchInput').value.trim();
-  if (!q) return;
-  showGridLoader();
-  document.getElementById('gridTitle').textContent = `Results for "${q}"`;
-  const res = await fetch(API + `search.php?s=${encodeURIComponent(q)}`);
-  const data = await res.json();
-  const meals = data.meals || [];
-  renderGrid(meals, '');
-}
-
-// ── Random
-async function loadRandom() {
-  const res = await fetch(API + 'random.php');
-  const data = await res.json();
-  if (data.meals) openModal(data.meals[0]);
-}
-
-function showGridLoader() {
-  document.getElementById('mealGrid').innerHTML =
-    '<div class="loader-wrap" style="grid-column:1/-1"><div class="loader"></div></div>';
-}
-
-function renderGrid(meals, category) {
-  const grid = document.getElementById('mealGrid');
-  if (!meals.length) {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
-      <div class="empty-icon">🍽️</div>
-      <h3>No recipes found</h3>
-      <p>Try a different search term or browse by category above.</p>
-    </div>`;
-    return;
+  // FIX: Safe text escape function — prevents XSS from injected API data
+  function escapeText(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
-  grid.innerHTML = '';
-  meals.forEach((meal, i) => {
-    const card = document.createElement('div');
-    card.className = 'meal-card';
-    card.style.animationDelay = `${i * 0.06}s`;
-    card.innerHTML = `
-      <div class="meal-card-img-wrap">
-        <img src="${meal.strMealThumb || ''}/preview" alt="${meal.strMeal}" loading="lazy" onerror="this.src='${meal.strMealThumb}'">
-        ${category ? `<div class="meal-card-badge">${category}</div>` : ''}
+
+  // ── Estimated nutrition per meal category
+  const nutritionDB = {
+    Beef:          { cal:520, fat:28, sat:11, chol:95,  sod:680, carb:22, fiber:2,  sugar:4,  prot:45 },
+    Chicken:       { cal:380, fat:14, sat:4,  chol:120, sod:590, carb:18, fiber:2,  sugar:3,  prot:42 },
+    Seafood:       { cal:290, fat:10, sat:2,  chol:85,  sod:510, carb:14, fiber:1,  sugar:2,  prot:36 },
+    Lamb:          { cal:460, fat:25, sat:10, chol:100, sod:610, carb:16, fiber:2,  sugar:3,  prot:40 },
+    Pasta:         { cal:430, fat:12, sat:4,  chol:30,  sod:480, carb:62, fiber:4,  sugar:5,  prot:16 },
+    Dessert:       { cal:510, fat:22, sat:13, chol:85,  sod:240, carb:72, fiber:2,  sugar:54, prot:7  },
+    Vegetarian:    { cal:310, fat:9,  sat:2,  chol:0,   sod:390, carb:48, fiber:9,  sugar:12, prot:14 },
+    Vegan:         { cal:280, fat:7,  sat:1,  chol:0,   sod:340, carb:50, fiber:10, sugar:10, prot:11 },
+    Pork:          { cal:490, fat:26, sat:9,  chol:90,  sod:720, carb:20, fiber:2,  sugar:5,  prot:40 },
+    Side:          { cal:230, fat:8,  sat:2,  chol:10,  sod:320, carb:34, fiber:4,  sugar:4,  prot:6  },
+    Starter:       { cal:180, fat:7,  sat:2,  chol:25,  sod:410, carb:22, fiber:2,  sugar:3,  prot:9  },
+    Breakfast:     { cal:350, fat:15, sat:5,  chol:220, sod:550, carb:38, fiber:3,  sugar:10, prot:18 },
+    Goat:          { cal:420, fat:18, sat:7,  chol:85,  sod:580, carb:15, fiber:2,  sugar:3,  prot:38 },
+    Miscellaneous: { cal:370, fat:16, sat:5,  chol:55,  sod:500, carb:40, fiber:3,  sugar:6,  prot:18 },
+  };
+
+  function getNutrition(category) {
+    return nutritionDB[category] || nutritionDB['Miscellaneous'];
+  }
+
+  // ── Load categories
+  async function loadCategories() {
+    try {
+      const res = await fetch(API + 'categories.php');
+      const data = await res.json();
+      const strip = document.getElementById('catsStrip');
+      strip.innerHTML = '';
+      data.categories.forEach((cat, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'cat-chip';
+        chip.style.animationDelay = `${i * 0.03}s`;
+
+        // FIX: Use textContent and setAttribute instead of innerHTML for user-facing data
+        const img = document.createElement('img');
+        img.src = cat.strCategoryThumb;
+        img.alt = '';
+        img.width = 20;
+        img.height = 20;
+        // FIX: Removed onerror inline handler — use addEventListener
+        img.addEventListener('error', () => { img.style.display = 'none'; });
+
+        const label = document.createTextNode(cat.strCategory);
+        chip.appendChild(img);
+        chip.appendChild(label);
+
+        // FIX: addEventListener instead of onclick attribute
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          loadByCategory(cat.strCategory);
+        });
+        strip.appendChild(chip);
+      });
+
+      // Load default category — Chicken is index 1 (0-based)
+      loadByCategory('Chicken');
+      const chips = document.querySelectorAll('.cat-chip');
+      if (chips[1]) chips[1].classList.add('active');
+    } catch (err) {
+      console.error('Failed to load categories:', err);
+    }
+  }
+
+  // ── Load meals by category
+  async function loadByCategory(cat) {
+    document.getElementById('gridTitle').textContent = cat + ' Dishes';
+    showGridLoader();
+    try {
+      const res = await fetch(API + `filter.php?c=${encodeURIComponent(cat)}`);
+      const data = await res.json();
+      const meals = data.meals ? data.meals.slice(0, 12) : [];
+      renderGrid(meals, cat);
+    } catch (err) {
+      console.error('Failed to load meals:', err);
+      showGridError();
+    }
+  }
+
+  // ── Search
+  async function searchMeals() {
+    const q = document.getElementById('searchInput').value.trim();
+    if (!q) return;
+    showGridLoader();
+    // FIX: textContent to avoid XSS in heading
+    document.getElementById('gridTitle').textContent = `Results for "${q}"`;
+    try {
+      const res = await fetch(API + `search.php?s=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      renderGrid(data.meals || [], '');
+    } catch (err) {
+      console.error('Search failed:', err);
+      showGridError();
+    }
+  }
+
+  // ── Random
+  async function loadRandom() {
+    try {
+      const res = await fetch(API + 'random.php');
+      const data = await res.json();
+      if (data.meals) openModal(data.meals[0]);
+    } catch (err) {
+      console.error('Failed to load random meal:', err);
+    }
+  }
+
+  function showGridLoader() {
+    const grid = document.getElementById('mealGrid');
+    grid.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'loader-wrap';
+    wrap.style.gridColumn = '1 / -1';
+    const loader = document.createElement('div');
+    loader.className = 'loader';
+    wrap.appendChild(loader);
+    grid.appendChild(wrap);
+  }
+
+  function showGridError() {
+    const grid = document.getElementById('mealGrid');
+    grid.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.style.gridColumn = '1 / -1';
+    empty.innerHTML = '<div class="empty-icon">⚠️</div>';
+    const h = document.createElement('h3');
+    h.textContent = 'Something went wrong';
+    const p = document.createElement('p');
+    p.textContent = 'Please check your connection and try again.';
+    empty.appendChild(h);
+    empty.appendChild(p);
+    grid.appendChild(empty);
+  }
+
+  function renderGrid(meals, category) {
+    const grid = document.getElementById('mealGrid');
+    grid.innerHTML = '';
+
+    if (!meals.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.style.gridColumn = '1 / -1';
+      const icon = document.createElement('div');
+      icon.className = 'empty-icon';
+      icon.textContent = '🍽️';
+      const h = document.createElement('h3');
+      h.textContent = 'No recipes found';
+      const p = document.createElement('p');
+      p.textContent = 'Try a different search term or browse by category above.';
+      empty.appendChild(icon);
+      empty.appendChild(h);
+      empty.appendChild(p);
+      grid.appendChild(empty);
+      return;
+    }
+
+    meals.forEach((meal, i) => {
+      const card = document.createElement('div');
+      card.className = 'meal-card';
+      card.style.animationDelay = `${i * 0.06}s`;
+
+      // Image wrapper
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'meal-card-img-wrap';
+
+      const img = document.createElement('img');
+      // Use /preview thumb for smaller size; fall back to full if it errors
+      img.src = meal.strMealThumb ? meal.strMealThumb + '/preview' : '';
+      img.alt = meal.strMeal || '';
+      img.loading = 'lazy';
+      // FIX: addEventListener instead of onerror attribute
+      img.addEventListener('error', () => { img.src = meal.strMealThumb || ''; });
+      imgWrap.appendChild(img);
+
+      if (category) {
+        const badge = document.createElement('div');
+        badge.className = 'meal-card-badge';
+        badge.textContent = category;
+        imgWrap.appendChild(badge);
+      }
+
+      // Card body — FIX: textContent everywhere to prevent XSS
+      const body = document.createElement('div');
+      body.className = 'meal-card-body';
+
+      const area = document.createElement('div');
+      area.className = 'meal-card-area';
+      area.textContent = meal.strArea || category || 'Global';
+
+      const name = document.createElement('div');
+      name.className = 'meal-card-name';
+      name.textContent = meal.strMeal || '';
+
+      const tags = document.createElement('div');
+      tags.className = 'meal-card-tags';
+      if (meal.strTags) {
+        meal.strTags.split(',').slice(0, 3).forEach(t => {
+          const tag = document.createElement('span');
+          tag.className = 'tag';
+          tag.textContent = t.trim();
+          tags.appendChild(tag);
+        });
+      }
+
+      body.appendChild(area);
+      body.appendChild(name);
+      body.appendChild(tags);
+      card.appendChild(imgWrap);
+      card.appendChild(body);
+
+      // FIX: addEventListener instead of onclick attribute
+      card.addEventListener('click', () => fetchAndOpenMeal(meal.idMeal, category));
+      grid.appendChild(card);
+    });
+  }
+
+  // ── Fetch full meal + open modal
+  async function fetchAndOpenMeal(id, category) {
+    try {
+      const res = await fetch(API + `lookup.php?i=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      if (data.meals) {
+        const meal = data.meals[0];
+        if (!meal.strCategory && category) meal._inferredCategory = category;
+        openModal(meal);
+      }
+    } catch (err) {
+      console.error('Failed to fetch meal:', err);
+    }
+  }
+
+  function openModal(meal) {
+    // FIX: Use .src and .textContent assignments — no innerHTML with API data
+    const modalImg = document.getElementById('modalImg');
+    modalImg.src = meal.strMealThumb || '';
+    modalImg.alt = meal.strMeal || '';
+
+    document.getElementById('modalName').textContent = meal.strMeal || '';
+    document.getElementById('modalArea').textContent =
+      [meal.strArea, meal.strCategory].filter(Boolean).join(' · ');
+
+    // Ingredients — FIX: DOM element creation, no innerHTML
+    const ingWrap = document.getElementById('modalIngredients');
+    ingWrap.innerHTML = '';
+    for (let i = 1; i <= 20; i++) {
+      const ingName = meal[`strIngredient${i}`];
+      const measure = meal[`strMeasure${i}`];
+      if (!ingName || !ingName.trim()) break;
+      const row = document.createElement('div');
+      row.className = 'ingredient-row';
+      const mSpan = document.createElement('span');
+      mSpan.className = 'measure';
+      mSpan.textContent = measure ? measure.trim() : '';
+      const nSpan = document.createElement('span');
+      nSpan.className = 'name';
+      nSpan.textContent = ingName.trim();
+      row.appendChild(mSpan);
+      row.appendChild(nSpan);
+      ingWrap.appendChild(row);
+    }
+
+    // Instructions — FIX: textContent per step, no innerHTML with API text
+    const instrWrap = document.getElementById('modalInstructions');
+    instrWrap.innerHTML = '';
+    const steps = (meal.strInstructions || '').split(/\r?\n/).filter(s => s.trim().length > 10);
+    if (steps.length) {
+      steps.forEach((s, i) => {
+        const step = document.createElement('div');
+        step.className = 'instruction-step';
+        const num = document.createElement('div');
+        num.className = 'step-num';
+        num.textContent = String(i + 1);
+        const text = document.createElement('div');
+        text.textContent = s.trim();
+        step.appendChild(num);
+        step.appendChild(text);
+        instrWrap.appendChild(step);
+      });
+    } else {
+      const p = document.createElement('p');
+      p.textContent = meal.strInstructions || '';
+      instrWrap.appendChild(p);
+    }
+
+    // Video — FIX: validate URL pattern, use textContent for link label
+    const vidWrap = document.getElementById('modalVideo');
+    vidWrap.innerHTML = '';
+    if (meal.strYoutube && meal.strYoutube.startsWith('https://www.youtube.com/')) {
+      const a = document.createElement('a');
+      a.className = 'video-link';
+      a.href = meal.strYoutube;
+      // FIX: rel="noopener noreferrer" prevents tab-napping on external links
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = '▶ Watch on YouTube';
+      vidWrap.appendChild(a);
+    }
+
+    // Nutrition label — this is all internal static data, safe to use innerHTML
+    const cat = meal.strCategory || meal._inferredCategory || 'Miscellaneous';
+    const n = getNutrition(cat);
+    document.getElementById('nutritionLabel').innerHTML = buildNutritionLabel(n, escapeText(cat));
+
+    document.getElementById('modalOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function buildNutritionLabel(n, cat) {
+    // This function uses only internal nutritionDB data + escaped category name — safe
+    const dv = (val, ref) => Math.round((val / ref) * 100);
+    return `
+      <div class="nutrition-title">Nutrition Facts</div>
+      <div class="nutrition-servings">1 serving (avg. ${cat} dish)</div>
+      <hr class="nutrition-divider">
+      <div class="nutrition-cal-row">
+        <div class="nutrition-cal-label">Calories</div>
+        <div class="nutrition-cal-value">${n.cal}</div>
       </div>
-      <div class="meal-card-body">
-        <div class="meal-card-area">${meal.strArea || category || 'Global'}</div>
-        <div class="meal-card-name">${meal.strMeal}</div>
-        <div class="meal-card-tags">
-          ${meal.strTags ? meal.strTags.split(',').slice(0,3).map(t=>`<span class="tag">${t.trim()}</span>`).join('') : ''}
-        </div>
-      </div>`;
-    card.onclick = () => fetchAndOpenMeal(meal.idMeal, category);
-    grid.appendChild(card);
+      <hr class="nutrition-divider thin">
+      <div class="nutrition-dv">% Daily Value*</div>
+      <div class="nutrition-row bold"><span class="label">Total Fat ${n.fat}g</span><span class="value">${dv(n.fat,78)}%</span></div>
+      <div class="nutrition-row indented"><span class="label">Saturated Fat ${n.sat}g</span><span class="value">${dv(n.sat,20)}%</span></div>
+      <div class="nutrition-row indented"><span class="label"><em>Trans</em> Fat 0g</span><span class="value"></span></div>
+      <div class="nutrition-row bold"><span class="label">Cholesterol ${n.chol}mg</span><span class="value">${dv(n.chol,300)}%</span></div>
+      <div class="nutrition-row bold"><span class="label">Sodium ${n.sod}mg</span><span class="value">${dv(n.sod,2300)}%</span></div>
+      <div class="nutrition-row bold"><span class="label">Total Carb. ${n.carb}g</span><span class="value">${dv(n.carb,275)}%</span></div>
+      <div class="nutrition-row indented"><span class="label">Dietary Fiber ${n.fiber}g</span><span class="value">${dv(n.fiber,28)}%</span></div>
+      <div class="nutrition-row indented"><span class="label">Total Sugars ${n.sugar}g</span><span class="value"></span></div>
+      <div class="nutrition-row bold"><span class="label">Protein ${n.prot}g</span><span class="value">${dv(n.prot,50)}%</span></div>
+      <hr class="nutrition-divider thin">
+      <div class="nutrition-row"><span class="label">Vitamin D</span><span class="value">2mcg · 10%</span></div>
+      <div class="nutrition-row"><span class="label">Calcium</span><span class="value">260mg · 20%</span></div>
+      <div class="nutrition-row"><span class="label">Iron</span><span class="value">8mg · 45%</span></div>
+      <div class="nutrition-row"><span class="label">Potassium</span><span class="value">680mg · 15%</span></div>
+      <p class="nutrition-note">*Values are estimates based on typical ${cat.toLowerCase()} dishes and a 2,000 calorie diet. Actual values may vary by recipe.</p>
+    `;
+  }
+
+  function closeModalDirect() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // ── Wire up all event listeners here (FIX: zero inline handlers in HTML)
+  document.addEventListener('DOMContentLoaded', () => {
+    // Nav
+    document.getElementById('navInspire').addEventListener('click', (e) => {
+      e.preventDefault();
+      loadRandom();
+    });
+
+    // Search
+    document.getElementById('searchBtn').addEventListener('click', searchMeals);
+    document.getElementById('searchInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchMeals();
+    });
+
+    // Random
+    document.getElementById('randomBtn').addEventListener('click', loadRandom);
+
+    // Modal close button
+    document.getElementById('modalCloseBtn').addEventListener('click', closeModalDirect);
+
+    // Modal overlay click-outside-to-close
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('modalOverlay')) closeModalDirect();
+    });
+
+    // Keyboard escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModalDirect();
+    });
+
+    // Init
+    loadCategories();
   });
-}
-
-// ── Fetch full meal + open modal
-async function fetchAndOpenMeal(id, category) {
-  const res = await fetch(API + `lookup.php?i=${id}`);
-  const data = await res.json();
-  if (data.meals) {
-    const meal = data.meals[0];
-    if (!meal.strCategory && category) meal._inferredCategory = category;
-    openModal(meal);
-  }
-}
-
-function openModal(meal) {
-  // Fill hero
-  document.getElementById('modalImg').src = meal.strMealThumb;
-  document.getElementById('modalName').textContent = meal.strMeal;
-  document.getElementById('modalArea').textContent =
-    [meal.strArea, meal.strCategory].filter(Boolean).join(' · ');
-
-  // Ingredients
-  const ingWrap = document.getElementById('modalIngredients');
-  ingWrap.innerHTML = '';
-  for (let i = 1; i <= 20; i++) {
-    const name = meal[`strIngredient${i}`];
-    const measure = meal[`strMeasure${i}`];
-    if (!name || !name.trim()) break;
-    const row = document.createElement('div');
-    row.className = 'ingredient-row';
-    row.innerHTML = `<span class="measure">${measure ? measure.trim() : ''}</span><span class="name">${name.trim()}</span>`;
-    ingWrap.appendChild(row);
-  }
-
-  // Instructions
-  const instr = document.getElementById('modalInstructions');
-  const steps = (meal.strInstructions || '').split(/\r?\n/).filter(s => s.trim().length > 10);
-  instr.innerHTML = steps.length
-    ? steps.map((s,i) => `<div class="instruction-step"><div class="step-num">${i+1}</div><div>${s.trim()}</div></div>`).join('')
-    : `<p>${meal.strInstructions}</p>`;
-
-  // Video
-  const vid = document.getElementById('modalVideo');
-  vid.innerHTML = meal.strYoutube
-    ? `<a class="video-link" href="${meal.strYoutube}" target="_blank">▶ Watch on YouTube</a>` : '';
-
-  // Nutrition
-  const cat = meal.strCategory || meal._inferredCategory || 'Miscellaneous';
-  const n = getNutrition(cat);
-  document.getElementById('nutritionLabel').innerHTML = buildNutritionLabel(n, cat);
-
-  document.getElementById('modalOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function buildNutritionLabel(n, cat) {
-  const dv = (val, ref) => Math.round((val / ref) * 100);
-  return `
-    <div class="nutrition-title">Nutrition Facts</div>
-    <div class="nutrition-servings">1 serving (avg. ${cat} dish)</div>
-    <hr class="nutrition-divider">
-    <div class="nutrition-cal-row">
-      <div class="nutrition-cal-label">Calories</div>
-      <div class="nutrition-cal-value">${n.cal}</div>
-    </div>
-    <hr class="nutrition-divider thin">
-    <div class="nutrition-dv">% Daily Value*</div>
-    <div class="nutrition-row bold"><span class="label">Total Fat ${n.fat}g</span><span class="value">${dv(n.fat,78)}%</span></div>
-    <div class="nutrition-row indented"><span class="label">Saturated Fat ${n.sat}g</span><span class="value">${dv(n.sat,20)}%</span></div>
-    <div class="nutrition-row indented"><span class="label"><em>Trans</em> Fat 0g</span><span class="value"></span></div>
-    <div class="nutrition-row bold"><span class="label">Cholesterol ${n.chol}mg</span><span class="value">${dv(n.chol,300)}%</span></div>
-    <div class="nutrition-row bold"><span class="label">Sodium ${n.sod}mg</span><span class="value">${dv(n.sod,2300)}%</span></div>
-    <div class="nutrition-row bold"><span class="label">Total Carb. ${n.carb}g</span><span class="value">${dv(n.carb,275)}%</span></div>
-    <div class="nutrition-row indented"><span class="label">Dietary Fiber ${n.fiber}g</span><span class="value">${dv(n.fiber,28)}%</span></div>
-    <div class="nutrition-row indented"><span class="label">Total Sugars ${n.sugar}g</span><span class="value"></span></div>
-    <div class="nutrition-row bold"><span class="label">Protein ${n.prot}g</span><span class="value">${dv(n.prot,50)}%</span></div>
-    <hr class="nutrition-divider thin">
-    <div class="nutrition-row"><span class="label">Vitamin D</span><span class="value">2mcg · 10%</span></div>
-    <div class="nutrition-row"><span class="label">Calcium</span><span class="value">260mg · 20%</span></div>
-    <div class="nutrition-row"><span class="label">Iron</span><span class="value">8mg · 45%</span></div>
-    <div class="nutrition-row"><span class="label">Potassium</span><span class="value">680mg · 15%</span></div>
-    <p class="nutrition-note">*Values are estimates based on typical ${cat.toLowerCase()} dishes and a 2,000 calorie diet. Actual values may vary by recipe.</p>
-  `;
-}
-
-function closeModal(e) {
-  if (e.target === document.getElementById('modalOverlay')) closeModalDirect();
-}
-function closeModalDirect() {
-  document.getElementById('modalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
-
-// ── Init
-loadCategories();
 </script>
 </body>
-
 </html>
-
-
-
-
-
-
